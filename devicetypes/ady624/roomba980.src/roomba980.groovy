@@ -202,7 +202,7 @@ def pollHistory() {
     log.debug "Polling for missionHistory ----"
     sendEvent(name: "headline", value: "Polling history API", displayed: false)
     state.RoombaCmd = "missionHistory"
-    localAPI ? null : apiGet()
+    return localAPI ? null : apiGet()
 }
 def poll() {
     //Get historical data first
@@ -211,7 +211,7 @@ def poll() {
     log.debug "Polling for status ----"
     sendEvent(name: "headline", value: "Polling status API", displayed: false)
     state.RoombaCmd = "getStatus"
-    localAPI ? local_poll() : apiGet()
+    return localAPI ? local_poll() : apiGet()
 }
 // Switch methods
 def on() {
@@ -219,9 +219,9 @@ def on() {
     def status = device.latestValue("status")
     log.debug "On based on state - ${status}"
     if(status == "paused") {
-        resume()
+	    return resume()
     } else {
-        start()
+	    return start()
     }
 }
 def off() {
@@ -230,52 +230,51 @@ def off() {
     def status = device.latestValue("status")
     log.debug "Off based on state - ${status}"
     if(status == "paused") {
-        dock()
+    	return dock()
     } else {
-        pauseAndDock()
+	    return pauseAndDock()
     }
 }
 // Timed Session
 def start() {
     sendEvent(name: "status", value: "starting")
     state.RoombaCmd = "start"
-    localAPI ? local_start() : apiGet()
     runIn(15, poll)
+	return localAPI ? local_start() : apiGet()
 }
 def stop() {
     sendEvent(name: "status", value: "stopping")
     state.RoombaCmd = "stop"
-    localAPI ? local_stop() : apiGet()
     runIn(15, poll)
+    return localAPI ? local_stop() : apiGet()
 }
 def pauseAndDock() {
     sendEvent(name: "status", value: "pausing")
     state.RoombaCmd = "pause"
-    localAPI ? local_pauseAndDock() : apiGet()
-    dock()
+    return localAPI ? local_pauseAndDock() : apiGet()
 }
 def pause() {
     sendEvent(name: "status", value: "pausing")
     state.RoombaCmd = "pause"
-    localAPI ? local_pause() : apiGet()
     runIn(15, poll)
+    return localAPI ? local_pause() : apiGet()
 }
 def cancel() {
-    off()
+	return off()
 }
 
 // Actions
 def dock() {
     sendEvent(name: "status", value: "docking")
     state.RoombaCmd = "dock"
-    localAPI ? local_dock() : apiGet()
     runIn(15, poll)
+	return localAPI ? local_dock() : apiGet()
 }
 def resume() {
     sendEvent(name: "status", value: "resuming")
     state.RoombaCmd = "resume"
-    localAPI ? local_resume() : apiGet()
     runIn(15, poll)
+    return localAPI ? local_resume() : apiGet()
 }
 // API methods
 def parse(description) {
@@ -568,13 +567,12 @@ def lanEventHandler(evt) {
     */    
 }
 
-private local_get(path, callback) {
+private local_get(path, cbk) {
 	def host = "$roomba_host:$roomba_port"
-	new physicalgraph.device.HubAction("""GET $path HTTP/1.1\r\nHOST: $host\r\n\r\n""", physicalgraph.device.Protocol.LAN, null, [callback: local_poll_cbk])
+	new physicalgraph.device.HubAction("""GET $path HTTP/1.1\r\nHOST: $host\r\n\r\n""", physicalgraph.device.Protocol.LAN, null, [callback: cbk])
 }
 
-private local_poll() {
-	local_get('/api/local/info/state', 'local_poll_cbk')
+void local_dummy_cbk(physicalgraph.device.HubResponse hubResponse) {
 }
 
 void local_poll_cbk(physicalgraph.device.HubResponse hubResponse) {
@@ -652,28 +650,32 @@ void local_poll_cbk(physicalgraph.device.HubResponse hubResponse) {
     sendEvent(name: "consumable", value: state.consumable)    
 }
 
+private local_poll() {
+	local_get('/api/local/info/state', 'local_poll_cbk')
+}
+
 private local_start() {
-	local_get('/api/local/action/start', null)
+	local_get('/api/local/action/start', 'local_dummy_cbk')
 }
 
 private local_stop() {
-	local_get('/api/local/action/stop', null)
+	local_get('/api/local/action/stop', 'local_dummy_cbk')
 }
 
 private local_pause() {
-	local_get('/api/local/action/pause', null)
+	local_get('/api/local/action/pause', 'local_dummy_cbk')
 }
 
 private local_resume() {
-	local_get('/api/local/action/resume', null)
+	local_get('/api/local/action/resume', 'local_dummy_cbk')
 }
 
 private local_dock() {
-	local_get('/api/local/action/dock', null)
+	local_get('/api/local/action/dock', 'local_dummy_cbk')
 }
 
 private local_pauseAndDock() {
-	local_get('/api/local/action/pause', null)
+	local_get('/api/local/action/pause', 'local_dummy_cbk')
     pause(1000)
-	local_get('/api/local/action/dock', null)
+	local_get('/api/local/action/dock', 'local_dummy_cbk')
 }
